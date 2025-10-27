@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pubic AR App</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="styles.css">
+    <!-- TensorFlow.js a PoseNet z CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet@latest"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Pubic AR: Vyber šablonu ochlupení</h1>
+        <select id="template-select">
+            <option value="none">Žádná</option>
+            <option value="full">Full (plný)</option>
+            <option value="brazilian">Brazilian (úzký proužek)</option>
+            <option value="landing-strip">Landing Strip (přistávací dráha)</option>
+            <option value="triangle">Triangle (trojúhelník)</option>
+            <option value="heart">Heart (srdce)</option>
+            <option value="lightning">Lightning (blesk)</option>
+            <option value="star">Star (hvězda)</option>
+        </select>
+        <div class="video-container">
+            <video id="video" autoplay playsinline></video>
+            <canvas id="canvas" class="overlay"></canvas>
+        </div>
+        <p class="privacy-note">Tato app neukládá žádná data. Vše probíhá pouze lokálně.</p>
+    </div>
+    <script src="main.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(() => console.log('Service Worker registered'))
+                .catch(err => console.error('Service Worker registration failed', err));
+        }
+    </script>
+</body>
+</html>
