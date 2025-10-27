@@ -2,18 +2,22 @@
 <html lang="cs">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <title>Pubic AR App</title>
     <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
     <link rel="stylesheet" href="styles.css">
-    <!-- TensorFlow.js a PoseNet z CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet@latest"></script>
+    <!-- TensorFlow.js a Pose Detection z CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@latest"></script>
 </head>
 <body>
     <div class="container">
         <h1>Pubic AR: Vyber šablonu ochlupení</h1>
-        <select id="template-select">
+        <select id="template-select" aria-label="Vyber šablonu ochlupení">
             <option value="none">Žádná</option>
             <option value="full">Full (plný)</option>
             <option value="brazilian">Brazilian (úzký proužek)</option>
