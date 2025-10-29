@@ -1,0 +1,150 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+    background-color: #f0f0f0;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.container {
+    text-align: center;
+    max-width: 100%;
+    padding: 10px;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+h1 {
+    font-size: 1.5em;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+select {
+    width: 100%;
+    max-width: 400px;
+    padding: 12px;
+    margin: 0 auto 10px;
+    font-size: 1em;
+    border: 2px solid #333;
+    border-radius: 8px;
+    background: white;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: all 0.3s ease;
+}
+
+select:hover {
+    border-color: #555;
+}
+
+select:focus {
+    outline: none;
+    border-color: #000;
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
+}
+
+.video-container {
+    position: relative;
+    width: 100%;
+    flex-grow: 1;
+    max-height: 70vh;
+    margin: 0 auto;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+#video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+}
+
+#canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    transform: scaleX(-1);
+    pointer-events: none;
+}
+
+.privacy-note {
+    font-size: 0.8em;
+    color: #666;
+    margin-top: 10px;
+    padding: 10px;
+}
+
+.loading {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(255, 255, 255, 0.95);
+    padding: 20px 40px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+}
+
+.loading.hidden {
+    display: none;
+}
+
+/* Media queries pro mobil */
+@media (max-width: 600px) {
+    h1 {
+        font-size: 1.2em;
+    }
+
+    select {
+        font-size: 0.9em;
+        max-width: 100%;
+    }
+
+    .video-container {
+        max-height: 60vh;
+    }
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+    body {
+        background-color: #1a1a1a;
+        color: #fff;
+    }
+
+    h1 {
+        color: #fff;
+    }
+
+    select {
+        background: #2a2a2a;
+        color: #fff;
+        border-color: #555;
+    }
+
+    .privacy-note {
+        color: #aaa;
+    }
+
+    .loading {
+        background: rgba(30, 30, 30, 0.95);
+        color: #fff;
+    }
+}
