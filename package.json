@@ -1,0 +1,24 @@
+{
+  "name": "pubic-ar-app",
+  "version": "2.0.0",
+  "type": "module",
+  "description": "AR aplikace pro vizualizaci šablon ochlupení",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "deploy": "npm run build && gh-pages -d dist"
+  },
+  "dependencies": {
+    "@tensorflow-models/pose-detection": "^2.1.3",
+    "@tensorflow/tfjs": "^4.21.0"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0",
+    "gh-pages": "^6.1.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Martyparty1988/Oholbuchtu.git"
+  }
+}

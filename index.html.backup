@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <title>Pubic AR App</title>
+    <!-- Inline manifest jako data URI -->
+    <link rel="manifest" href="data:application/manifest+json;base64,ewogICAgIm5hbWUiOiAiUHViaWMgQVIgQXBwIiwKICAgICJzaG9ydF9uYW1lIjogIlB1YmljQVIiLAogICAgImRlc2NyaXB0aW9uIjogIkFSIGFwcCBwcm8gcMWTacOhdsOhbsOtIHZpcnTDoWzDrWhvIG9jaGx1cGVuw60iLAogICAgInN0YXJ0X3VybCI6ICIuIiwKICAgICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICAgImJhY2tncm91bmRfY29sb3IiOiAiI2ZmZmZmZiIsCiAgICAidGhlbWVfY29sb3IiOiAiIzAwMDAwMCIsCiAgICAib3JpZW50YXRpb24iOiAicG9ydHJhaXQiLAogICAgImljb25zIjogW10gfQ==">
+    <!-- TensorFlow.js a Pose Detection z CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@latest"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden; /* Pro full-screen na mobile */
+        }
+
+        .container {
+            text-align: center;
+            max-width: 100%;
+            padding: 10px;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        h1 {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }
+
+        select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-size: 1em;
+            touch-action: manipulation; /* Touch-friendly */
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            flex-grow: 1;
+            max-height: 70vh;
+            margin: 0 auto;
+        }
+
+        #video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1); /* Zrcadlení pro přirozený pohled */
+        }
+
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transform: scaleX(-1); /* Zrcadlení overlay */
+        }
+
+        .privacy-note {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 10px;
+        }
+
+        /* Media queries pro mobil */
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 1.2em;
+            }
+            select {
+                font-size: 0.9em;
+            }
+            .video-container {
+                max-height: 60vh;
+            }
+        }
+
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #333;
+                color: #fff;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Pubic AR: Vyber šablonu ochlupení</h1>
+        <select id="template-select" aria-label="Vyber šablonu ochlupení">
+            <option value="none">Žádná</option>
+            <option value="full">Full (plný)</option>
+            <option value="brazilian">Brazilian (úzký proužek)</option>
+            <option value="landing-strip">Landing Strip (přistávací dráha)</option>
+            <option value="triangle">Triangle (trojúhelník)</option>
+            <option value="heart">Heart (srdce)</option>
+            <option value="lightning">Lightning (blesk)</option>
+            <option value="star">Star (hvězda)</option>
+        </select>
+        <div class="video-container">
+            <video id="video" autoplay playsinline></video>
+            <canvas id="canvas" class="overlay"></canvas>
+        </div>
+        <p class="privacy-note">Tato app neukládá žádná data. Vše probíhá pouze lokálně.</p>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            const select = document.getElementById('template-select');
+
+            let detector; // Pose Detection model
+            let currentTemplate = 'none';
+            let lastDetectionTime = 0;
+            const detectionInterval = 200; // 200ms interval pro šetření CPU na mobile
+
+            // Načtení MoveNet modelu
+            async function loadDetector() {
+                try {
+                    const detectorConfig = { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING };
+                    detector = await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet, detectorConfig);
+                    console.log('MoveNet loaded');
+                } catch (error) {
+                    console.error('Chyba při načítání modelu:', error);
+                    alert('Nepodařilo se načíst model pro detekci. Zkus to později.');
+                }
+            }
+
+            // Přístup ke kameře s optimalizovaným rozlišením
+            async function setupCamera() {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    alert('Tvé zařízení nepodporuje přístup ke kameře.');
+                    return;
+                }
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            facingMode: 'user', // Přední kamera
+                            width: { ideal: 640 }, // Snížené rozlišení pro mobil
+                            height: { ideal: 480 }
+                        }
+                    });
+                    video.srcObject = stream;
+                    video.onloadedmetadata = () => {
+                        video.play();
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        detectAndDraw();
+                    };
+                } catch (error) {
+                    console.error('Chyba při přístupu ke kameře:', error);
+                    alert('Nepodařilo se získat přístup ke kameře. Povol prosím přístup.');
+                }
+            }
+
+            // Detekce póz a kreslení overlay s intervalem
+            async function detectAndDraw() {
+                const now = Date.now();
+                if (now - lastDetectionTime < detectionInterval) {
+                    requestAnimationFrame(detectAndDraw);
+                    return;
+                }
+                lastDetectionTime = now;
+
+                if (video.paused || video.ended || !detector) {
+                    requestAnimationFrame(detectAndDraw);
+                    return;
+                }
+
+                const poses = await detector.estimatePoses(video);
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                if (poses.length > 0 && poses[0].score > 0.5) {
+                    const leftHip = poses[0].keypoints.find(k => k.name === 'left_hip');
+                    const rightHip = poses[0].keypoints.find(k => k.name === 'right_hip');
+
+                    if (leftHip && rightHip && leftHip.score > 0.2 && rightHip.score > 0.2) {
+                        const centerX = (leftHip.x + rightHip.x) / 2;
+                        const centerY = (leftHip.y + rightHip.y) / 2 + (Math.abs(leftHip.x - rightHip.x) / 3);
+                        const width = Math.abs(leftHip.x - rightHip.x) * 0.8;
+                        const height = width * 1.2;
+
+                        drawTemplate(ctx, currentTemplate, centerX, centerY, width, height);
+                    }
+                }
+
+                await tf.nextFrame();
+                requestAnimationFrame(detectAndDraw);
+            }
+
+            // Funkce pro kreslení šablon (jednoduché canvas kresby)
+            function drawTemplate(ctx, template, x, y, w, h) {
+                ctx.fillStyle = '#000';
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+
+                switch (template) {
+                    case 'full':
+                        ctx.fillRect(x - w/2, y - h/2, w, h);
+                        break;
+                    case 'brazilian':
+                        ctx.fillRect(x - w/8, y - h/2, w/4, h);
+                        break;
+                    case 'landing-strip':
+                        ctx.fillRect(x - w/4, y - h/2, w/2, h);
+                        break;
+                    case 'triangle':
+                        ctx.beginPath();
+                        ctx.moveTo(x, y - h/2);
+                        ctx.lineTo(x - w/2, y + h/2);
+                        ctx.lineTo(x + w/2, y + h/2);
+                        ctx.closePath();
+                        ctx.fill();
+                        break;
+                    case 'heart':
+                        ctx.beginPath();
+                        ctx.moveTo(x, y + h/4);
+                        ctx.bezierCurveTo(x + w/2, y - h/2, x - w/2, y - h/2, x, y + h/4);
+                        ctx.bezierCurveTo(x - w/2, y + h/2, x + w/2, y + h/2, x, y + h/4);
+                        ctx.fill();
+                        break;
+                    case 'lightning':
+                        ctx.beginPath();
+                        ctx.moveTo(x - w/2, y - h/2);
+                        ctx.lineTo(x, y);
+                        ctx.lineTo(x - w/4, y + h/4);
+                        ctx.lineTo(x + w/2, y + h/2);
+                        ctx.lineTo(x, y + h/4);
+                        ctx.lineTo(x + w/4, y);
+                        ctx.lineTo(x - w/2, y - h/2);
+                        ctx.stroke();
+                        break;
+                    case 'star':
+                        const points = 5;
+                        const outerRadius = w/2;
+                        const innerRadius = outerRadius / 2;
+                        ctx.beginPath();
+                        for (let i = 0; i < points * 2; i++) {
+                            const radius = i % 2 === 0 ? outerRadius : innerRadius;
+                            const angle = (i * Math.PI / points) - Math.PI / 2;
+                            ctx.lineTo(x + radius * Math.cos(angle), y + radius * Math.sin(angle));
+                        }
+                        ctx.closePath();
+                        ctx.fill();
+                        break;
+                    default:
+                        break;
+                }
+
+                if (template !== 'none') {
+                    for (let i = 0; i < 50; i++) {
+                        const rx = x + (Math.random() - 0.5) * w;
+                        const ry = y + (Math.random() - 0.5) * h;
+                        ctx.beginPath();
+                        ctx.moveTo(rx, ry);
+                        ctx.lineTo(rx + (Math.random() - 0.5) * 10, ry + (Math.random() - 0.5) * 10);
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            // Změna šablony
+            select.addEventListener('change', (e) => {
+                currentTemplate = e.target.value;
+            });
+
+            // Inicializace
+            await loadDetector();
+            await setupCamera();
+        });
+
+        // Inline Service Worker registrace pomocí Blob
+        if ('serviceWorker' in navigator) {
+            const swCode = `
+const CACHE_NAME = 'pubic-ar-cache-v2';
+const urlsToCache = [
+    '/',
+    '/index.html' // Protože je to jeden soubor, cachujeme aktuální stránku
+];
+
+self.addEventListener('install', (event) => {
+    event.waitUntil(
+        caches.open(CACHE_NAME)
+            .then((cache) => {
+                return cache.addAll(urlsToCache);
+            })
+    );
+});
+
+self.addEventListener('fetch', (event) => {
+    if (event.request.url.startsWith('https://cdn.jsdelivr.net/npm/@tensorflow/')) {
+        event.respondWith(
+            caches.open(CACHE_NAME).then((cache) => {
+                return cache.match(event.request).then((response) => {
+                    return response || fetch(event.request).then((fetchedResponse) => {
+                        cache.put(event.request, fetchedResponse.clone());
+                        return fetchedResponse;
+                    });
+                });
+            })
+        );
+    } else {
+        event.respondWith(
+            caches.match(event.request)
+                .then((response) => {
+                    return response || fetch(event.request);
+                })
+        );
+    }
+});
+            `;
+            const swBlob = new Blob([swCode], { type: 'application/javascript' });
+            const swUrl = URL.createObjectURL(swBlob);
+            navigator.serviceWorker.register(swUrl)
+                .then(() => console.log('Inline Service Worker registered'))
+                .catch(err => console.error('Inline Service Worker registration failed', err));
+        }
+    </script>
+</body>
+</html>
