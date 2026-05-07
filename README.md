@@ -1,96 +1,79 @@
-# Pubic AR App
+# Pubic AR Studio
 
-AR aplikace pro vizualizaci různých šablon ochlupení pomocí TensorFlow.js a detekce póz.
+Soukromá mobilní AR aplikace pro rychlé porovnání různých šablon ochlupení pomocí kamery, TensorFlow.js a detekce pózy. Aplikace běží v prohlížeči, je optimalizovaná pro telefon a data z kamery nikam neodesílá.
 
 ## ✨ Vlastnosti
 
-- 🎯 Real-time detekce póz pomocí MoveNet
-- 🎨 Několik šablon ochlupení (Full, Brazilian, Landing Strip, Triangle, Heart, Lightning, Star)
-- 📱 Plná podpora mobilních zařízení
-- 🔒 100% soukromé - vše běží lokálně, žádná data se neukládají
-- 🌙 Podpora dark mode
-- 📦 PWA - instalovatelná jako aplikace
-- ⚡ Optimalizováno pro výkon
+- 🎯 Real-time detekce pózy pomocí MoveNet
+- 🎨 Šablony: Full, Brazilian, Landing Strip, Triangle, Heart, Lightning a Star
+- 📱 Mobilní rozhraní s podporou iPhone safe-area a PWA režimu
+- 🔒 Kamera se spouští ručně až po klepnutí uživatele
+- 🔁 Přepnutí přední/zadní kamery
+- 🪞 Volitelné zrcadlení selfie náhledu
+- 🌙 Automatický dark mode podle systému
+- 📦 GitHub Pages deployment přes GitHub Actions
+- ⚡ Service Worker pro rychlejší opakované načtení
 
 ## 🚀 Technologie
 
-- **Vite** - Modern build tool
-- **TensorFlow.js** - Machine learning v prohlížeči
-- **Pose Detection** - Detekce lidských póz
-- **Service Worker** - Offline funkcionalita
-- **ES Modules** - Moderní JavaScript
+- **Vite** – moderní build tool
+- **TensorFlow.js** – ML přímo v prohlížeči
+- **@tensorflow-models/pose-detection** – detekce pózy přes MoveNet
+- **Service Worker** – PWA cache a offline fallback
+- **ES Modules** – čistý moderní JavaScript bez frameworku
 
 ## 💻 Lokální vývoj
 
 ```bash
-# Instalace závislostí
 npm install
-
-# Spuštění dev serveru
 npm run dev
-
-# Build pro produkci
 npm run build
-
-# Náhled produkčního buildu
 npm run preview
 ```
 
 ## 🌐 Deployment
 
-Aplikace se automaticky nasazuje na GitHub Pages při push do main branch pomocí GitHub Actions.
+Repo je připravené pro GitHub Pages. Build se spustí automaticky po pushnutí do větve `main` přes GitHub Actions.
 
-### Manuální deployment
-
-```bash
-npm run deploy
-```
+Workflow umí použít `npm ci`, když existuje `package-lock.json`. Pokud lockfile v repozitáři není, použije bezpečný fallback přes `npm install --no-audit --no-fund`, aby deployment nespadl jen kvůli chybějícímu lockfile.
 
 ## 📋 Požadavky
 
 - Node.js 18+
-- Moderní prohlížeč s podporou:
-  - WebRTC (přístup ke kameře)
-  - WebGL (pro TensorFlow.js)
-  - Service Workers (pro PWA)
+- Moderní mobilní nebo desktopový prohlížeč s podporou:
+  - kamery přes WebRTC
+  - WebGL pro TensorFlow.js
+  - Service Worker pro PWA
 
 ## 🔒 Soukromí
 
-Tato aplikace:
-- Neukládá žádná data
-- Neodesílá nic na server
-- Vše probíhá pouze lokálně v prohlížeči
-- Kamera se používá pouze pro real-time detekci póz
+Aplikace:
 
-## 📱 Instalace jako PWA
-
-1. Otevři aplikaci v mobilním prohlížeči
-2. Klikni na "Přidat na plochu" / "Add to Home Screen"
-3. Aplikace se nainstaluje jako nativní app
+- nespouští kameru automaticky
+- neukládá fotky ani video
+- neodesílá obraz na žádný server
+- zpracovává detekci pózy lokálně v zařízení
+- zastaví kameru při zavření nebo skrytí stránky
 
 ## 🛠️ Struktura projektu
 
-```
+```text
 Oholbuchtu/
 ├── .github/
 │   └── workflows/
-│       └── deploy.yml        # GitHub Actions workflow
+│       └── deploy.yml
 ├── public/
-│   ├── icon.svg              # App ikona
-│   ├── manifest.json         # PWA manifest
-│   └── sw.js                 # Service Worker
+│   ├── icon.svg
+│   ├── manifest.json
+│   └── sw.js
 ├── src/
-│   ├── main.js               # Hlavní aplikační logika
-│   └── styles.css            # Styly
-├── index.html                # HTML šablona
-├── vite.config.js            # Vite konfigurace
-└── package.json              # NPM dependencies
+│   ├── main.js
+│   └── styles.css
+├── index.html
+├── vite.config.js
+└── package.json
 ```
 
 ## 📝 Licence
 
 MIT
-
-## 👨‍💻 Autor
-
-Vytvořeno s pomocí Claude Code
