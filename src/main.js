@@ -5,6 +5,7 @@ const MIN_POSE_SCORE = 0.35;
 const MIN_HIP_SCORE = 0.2;
 const DETECTION_INTERVAL_MS = 120;
 const BASE_URL = import.meta.env.BASE_URL || '/';
+const FUN_TEMPLATES = ['full', 'brazilian', 'landing-strip', 'triangle', 'heart', 'lightning', 'star'];
 
 class PubicARApp {
     constructor() {
@@ -19,7 +20,14 @@ class PubicARApp {
         this.startButton = document.getElementById('start-camera');
         this.stopButton = document.getElementById('stop-camera');
         this.switchButton = document.getElementById('switch-camera');
+        this.randomButton = document.getElementById('random-template');
+        this.boostButton = document.getElementById('boost-vibe');
+        this.chaosButton = document.getElementById('chaos-mode');
         this.mirrorToggle = document.getElementById('mirror-toggle');
+        this.templateLabel = document.getElementById('template-label');
+        this.vibeEl = document.getElementById('template-vibe');
+        this.vibeFill = document.getElementById('vibe-fill');
+        this.jokeEl = document.getElementById('template-joke');
 
         this.detector = null;
         this.stream = null;
@@ -27,12 +35,76 @@ class PubicARApp {
         this.facingMode = 'user';
         this.lastDetectionTime = 0;
         this.animationFrameId = null;
+        this.chaosTimeoutId = null;
         this.isRunning = false;
+        this.isChaosMode = false;
+
+        this.templateMeta = {
+            none: {
+                label: 'Decent mód',
+                score: 0,
+                joke: 'Zatím hraješ safe. Nuda, ale bezpečná nuda.',
+                status: 'Šablona vypnutá. Zatím decent mód, žádná divočina.'
+            },
+            full: {
+                label: 'Lesní království',
+                score: 8,
+                joke: 'Oldschool boss mode. Tohle nepotřebuje vysvětlení, jen respekt.',
+                status: 'Full mód zapnutý. Příroda se hlásí o slovo.'
+            },
+            brazilian: {
+                label: 'Aero mód',
+                score: 9,
+                joke: 'Maximum aerodynamika. Větrný tunel by zatleskal.',
+                status: 'Brazilian vybrán. Rychlost, elegance a lehká drzost.'
+            },
+            'landing-strip': {
+                label: 'Runway ready',
+                score: 7,
+                joke: 'Minimalismus s navigací zdarma. Let může začít.',
+                status: 'Landing Strip vybrán. Prosíme připoutejte se.'
+            },
+            triangle: {
+                label: 'Geometrická odvaha',
+                score: 8,
+                joke: 'Trojúhelník, co má víc sebedůvěry než maturant s tahákem.',
+                status: 'Triangle mód. Matika konečně našla smysl.'
+            },
+            heart: {
+                label: 'Romantický chaos',
+                score: 10,
+                joke: 'Cupid approved. Trochu sladké, trochu nebezpečné.',
+                status: 'Heart vybrán. Láska, drama, estetický risk.'
+            },
+            lightning: {
+                label: 'Pojistky ven',
+                score: 9,
+                joke: 'Tahle energie může vyhodit jističe i sebevědomí sousedům.',
+                status: 'Lightning mód. Elektrikář by brečel, ale styl máš.'
+            },
+            star: {
+                label: 'Main character',
+                score: 10,
+                joke: 'Main character energy detected. Netflix už volá.',
+                status: 'Star vybrán. Tady se nechodí, tady se nastupuje na scénu.'
+            }
+        };
+
+        this.roastPool = [
+            'Tohle už není styl, to je událost.',
+            'Nebezpečně vysoká aura. Dej tomu helmu.',
+            'Tohle má větší charisma než půlka Instagramu.',
+            'Lehce šílené, ale přesně proto to funguje.',
+            'Estetický risk, který překvapivě nepodklouzl.',
+            'Tady někdo omylem odemkl premium sebevědomí.',
+            'Vibe je tak silný, že by si zasloužil vlastní playlist.'
+        ];
     }
 
     init() {
         this.setupEventListeners();
-        this.setStatus('Připraveno. Kamera se spustí až po tvém klepnutí.');
+        this.updateFunPanel(this.currentTemplate);
+        this.setStatus('Připraveno. Vyber šablonu, hoď random nebo rovnou zapni kameru.');
         this.syncMirrorState();
     }
 
@@ -40,12 +112,14 @@ class PubicARApp {
         this.startButton?.addEventListener('click', () => this.start());
         this.stopButton?.addEventListener('click', () => this.stop());
         this.switchButton?.addEventListener('click', () => this.switchCamera());
+        this.randomButton?.addEventListener('click', () => this.pickRandomTemplate());
+        this.boostButton?.addEventListener('click', () => this.boostVibe());
+        this.chaosButton?.addEventListener('click', () => this.toggleChaosMode());
 
         this.select?.addEventListener('change', (event) => {
             this.currentTemplate = event.target.value;
-            this.setStatus(this.currentTemplate === 'none'
-                ? 'Šablona vypnutá. Kamera může běžet dál bez překryvu.'
-                : `Vybraná šablona: ${event.target.options[event.target.selectedIndex].text}`);
+            this.updateFunPanel(this.currentTemplate);
+            this.setStatus(this.templateMeta[this.currentTemplate]?.status || 'Šablona vybraná.');
         });
 
         this.mirrorToggle?.addEventListener('change', () => this.syncMirrorState());
@@ -55,6 +129,98 @@ class PubicARApp {
                 this.stop(false);
             }
         });
+    }
+
+    pickRandomTemplate() {
+        const randomTemplate = FUN_TEMPLATES[Math.floor(Math.random() * FUN_TEMPLATES.length)];
+        this.applyTemplate(randomTemplate);
+        this.pulsePartyMode(900);
+        this.setStatus(`Náhodná buchta vybrala: ${this.getSelectedTemplateText()}`);
+    }
+
+    boostVibe() {
+        if (this.currentTemplate === 'none') {
+            this.setStatus('Nejdřív vyber nějakou šablonu, ať je co boostit. Ani turbo nenafoukne nicotu.');
+            this.pulsePartyMode(600);
+            return;
+        }
+
+        const meta = this.templateMeta[this.currentTemplate] || this.templateMeta.none;
+        const boostedScore = Math.min(10, meta.score + 1 + Math.floor(Math.random() * 2));
+        const joke = this.roastPool[Math.floor(Math.random() * this.roastPool.length)];
+
+        this.renderFunPanel(meta.label, boostedScore, joke);
+        this.pulsePartyMode(1400);
+        this.setStatus(`Vibe boostnutý na ${boostedScore}/10. Tohle už začíná být nebezpečně ikonické.`);
+    }
+
+    toggleChaosMode() {
+        this.isChaosMode = !this.isChaosMode;
+        document.body.classList.toggle('chaos-mode', this.isChaosMode);
+
+        if (this.isChaosMode) {
+            this.chaosButton.textContent = '🪩 Chaos ON';
+            this.setStatus('Chaos mód zapnutý. Aplikace si teď myslí, že je diskokoule.');
+            this.startChaosLoop();
+            return;
+        }
+
+        this.chaosButton.textContent = '🪩 Chaos';
+        this.setStatus('Chaos mód vypnutý. Zase se tváříme jako slušná aplikace.');
+        this.stopChaosLoop();
+    }
+
+    startChaosLoop() {
+        this.stopChaosLoop();
+        this.chaosTimeoutId = window.setInterval(() => {
+            if (!this.isChaosMode) return;
+            this.applyTemplate(FUN_TEMPLATES[Math.floor(Math.random() * FUN_TEMPLATES.length)], false);
+            this.pulsePartyMode(420);
+        }, 1800);
+    }
+
+    stopChaosLoop() {
+        if (this.chaosTimeoutId) {
+            window.clearInterval(this.chaosTimeoutId);
+            this.chaosTimeoutId = null;
+        }
+    }
+
+    applyTemplate(template, announce = true) {
+        this.currentTemplate = template;
+        if (this.select) {
+            this.select.value = template;
+        }
+        this.updateFunPanel(template);
+
+        if (announce) {
+            this.setStatus(this.templateMeta[template]?.status || 'Šablona vybraná.');
+        }
+    }
+
+    updateFunPanel(template) {
+        const meta = this.templateMeta[template] || this.templateMeta.none;
+        this.renderFunPanel(meta.label, meta.score, meta.joke);
+    }
+
+    renderFunPanel(label, score, joke) {
+        if (this.templateLabel) this.templateLabel.textContent = label;
+        if (this.vibeEl) this.vibeEl.textContent = `Vibe ${score}/10`;
+        if (this.vibeFill) this.vibeFill.style.width = `${score * 10}%`;
+        if (this.jokeEl) this.jokeEl.textContent = joke;
+    }
+
+    getSelectedTemplateText() {
+        return this.select?.options[this.select.selectedIndex]?.text || 'neznámá šablona';
+    }
+
+    pulsePartyMode(duration = 1000) {
+        document.body.classList.add('party-mode');
+        window.setTimeout(() => {
+            if (!this.isChaosMode) {
+                document.body.classList.remove('party-mode');
+            }
+        }, duration);
     }
 
     async start() {
@@ -74,7 +240,7 @@ class PubicARApp {
             this.stopButton.disabled = false;
             this.switchButton.disabled = false;
             this.startButton.disabled = true;
-            this.setStatus('Kamera běží. Postav se tak, aby byly vidět boky.');
+            this.setStatus('Kamera běží. Postav se tak, aby byly vidět boky. Appka se bude tvářit, že je profesionál.');
             this.detectAndDraw();
         } catch (error) {
             console.error('Start error:', error);
@@ -107,7 +273,7 @@ class PubicARApp {
         this.switchButton.disabled = true;
 
         if (updateStatus) {
-            this.setStatus('Kamera zastavená. Soukromí v cajku.');
+            this.setStatus('Kamera zastavená. Soukromí v cajku, ostuda nikam neodešla.');
         }
     }
 
@@ -115,7 +281,7 @@ class PubicARApp {
         if (!this.isRunning) return;
 
         this.facingMode = this.facingMode === 'user' ? 'environment' : 'user';
-        this.setStatus('Přepínám kameru…');
+        this.setStatus('Přepínám kameru… malý technický break, žádná panika.');
         this.stop(false);
         await this.start();
     }
@@ -240,7 +406,7 @@ class PubicARApp {
             if (pose?.score > MIN_POSE_SCORE) {
                 this.drawPoseOverlay(pose);
             } else if (this.currentTemplate !== 'none') {
-                this.setStatus('Nevidím dobře postavu. Zkus odstoupit nebo přidat světlo.');
+                this.setStatus('Nevidím dobře postavu. Zkus odstoupit nebo přidat světlo. AI si vzala brýle z Lidlu.');
             }
         } catch (error) {
             console.error('Pose detection error:', error);
@@ -258,7 +424,7 @@ class PubicARApp {
         const rightHip = pose.keypoints.find((keypoint) => keypoint.name === 'right_hip');
 
         if (!leftHip || !rightHip || leftHip.score < MIN_HIP_SCORE || rightHip.score < MIN_HIP_SCORE) {
-            this.setStatus('Šablonu nemám kam přesně položit. Potřebuju lépe vidět boky.');
+            this.setStatus('Šablonu nemám kam přesně položit. Potřebuju lépe vidět boky, nejsem věštkyně.');
             return;
         }
 
@@ -272,12 +438,14 @@ class PubicARApp {
     }
 
     drawTemplate(x, y, width, height) {
+        const hue = this.getTemplateHue();
+
         this.ctx.save();
-        this.ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
-        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        this.ctx.fillStyle = `hsla(${hue}, 88%, 42%, 0.92)`;
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
         this.ctx.lineWidth = Math.max(width * 0.025, 1.5);
-        this.ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
-        this.ctx.shadowBlur = 12;
+        this.ctx.shadowColor = `hsla(${hue}, 90%, 55%, 0.55)`;
+        this.ctx.shadowBlur = this.isChaosMode ? 26 : 12;
         this.ctx.shadowOffsetY = 4;
 
         this.createTemplatePath(x, y, width, height);
@@ -286,6 +454,20 @@ class PubicARApp {
         this.ctx.clip();
         this.drawHairTexture(x, y, width, height);
         this.ctx.restore();
+    }
+
+    getTemplateHue() {
+        const hueMap = {
+            full: 265,
+            brazilian: 326,
+            'landing-strip': 194,
+            triangle: 156,
+            heart: 345,
+            lightning: 42,
+            star: 280
+        };
+
+        return hueMap[this.currentTemplate] || 222;
     }
 
     createTemplatePath(x, y, width, height) {
@@ -370,7 +552,7 @@ class PubicARApp {
 
     drawHairTexture(x, y, width, height) {
         this.ctx.shadowColor = 'transparent';
-        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.42)';
         this.ctx.lineWidth = Math.max(width * 0.01, 1);
 
         for (let index = 0; index < 42; index += 1) {
