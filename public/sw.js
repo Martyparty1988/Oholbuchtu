@@ -1,75 +1,81 @@
-const CACHE_NAME = 'pubic-ar-cache-v3';
-const CDN_CACHE = 'cdn-cache-v3';
-
-const urlsToCache = [
-    '/',
-    '/index.html'
+const CACHE_VERSION = 'v4';
+const CACHE_NAME = `pubic-ar-app-${CACHE_VERSION}`;
+const APP_SHELL = [
+    './',
+    './index.html',
+    './manifest.json',
+    './icon.svg'
 ];
 
-// Install event - cache static resources
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME)
-            .then((cache) => cache.addAll(urlsToCache))
+            .then((cache) => cache.addAll(APP_SHELL))
             .then(() => self.skipWaiting())
     );
 });
 
-// Activate event - clean old caches
 self.addEventListener('activate', (event) => {
     event.waitUntil(
-        caches.keys().then((cacheNames) => {
-            return Promise.all(
-                cacheNames.map((cacheName) => {
-                    if (cacheName !== CACHE_NAME && cacheName !== CDN_CACHE) {
-                        return caches.delete(cacheName);
-                    }
-                })
-            );
-        }).then(() => self.clients.claim())
+        caches.keys()
+            .then((cacheNames) => Promise.all(
+                cacheNames
+                    .filter((cacheName) => cacheName.startsWith('pubic-ar-app-') && cacheName !== CACHE_NAME)
+                    .map((cacheName) => caches.delete(cacheName))
+            ))
+            .then(() => self.clients.claim())
     );
 });
 
-// Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', (event) => {
     const { request } = event;
-    const url = new URL(request.url);
 
-    // CDN resources - cache first, then network
-    if (url.hostname.includes('cdn.jsdelivr.net') ||
-        url.hostname.includes('unpkg.com')) {
-        event.respondWith(
-            caches.open(CDN_CACHE).then((cache) => {
-                return cache.match(request).then((response) => {
-                    return response || fetch(request).then((fetchedResponse) => {
-                        // Cache successful responses
-                        if (fetchedResponse.ok) {
-                            cache.put(request, fetchedResponse.clone());
-                        }
-                        return fetchedResponse;
-                    });
-                });
-            })
-        );
+    if (request.method !== 'GET') {
         return;
     }
 
-    // App resources - network first, fallback to cache
-    event.respondWith(
-        fetch(request)
-            .then((response) => {
-                // Cache successful responses
-                if (response.ok && request.method === 'GET') {
-                    const responseClone = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => {
-                        cache.put(request, responseClone);
-                    });
-                }
-                return response;
-            })
-            .catch(() => {
-                // Network failed, try cache
-                return caches.match(request);
-            })
-    );
+    const url = new URL(request.url);
+
+    if (url.origin !== self.location.origin) {
+        return;
+    }
+
+    if (request.mode === 'navigate') {
+        event.respondWith(networkFirst(request, './index.html'));
+        return;
+    }
+
+    event.respondWith(staleWhileRevalidate(request));
 });
+
+async function networkFirst(request, fallbackUrl) {
+    const cache = await caches.open(CACHE_NAME);
+
+    try {
+        const freshResponse = await fetch(request);
+        if (freshResponse.ok) {
+            cache.put(request, freshResponse.clone());
+        }
+        return freshResponse;
+    } catch (error) {
+        const cachedResponse = await cache.match(request) || await cache.match(fallbackUrl);
+        if (cachedResponse) return cachedResponse;
+        throw error;
+    }
+}
+
+async function staleWhileRevalidate(request) {
+    const cache = await caches.open(CACHE_NAME);
+    const cachedResponse = await cache.match(request);
+
+    const fetchPromise = fetch(request)
+        .then((networkResponse) => {
+            if (networkResponse.ok) {
+                cache.put(request, networkResponse.clone());
+            }
+            return networkResponse;
+        })
+        .catch(() => cachedResponse);
+
+    return cachedResponse || fetchPromise;
+}
