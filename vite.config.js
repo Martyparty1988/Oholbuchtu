@@ -1,7 +1,10 @@
 import { defineConfig } from 'vite';
 
+const isVercel = Boolean(process.env.VERCEL);
+const base = isVercel ? '/' : '/Oholbuchtu/';
+
 export default defineConfig({
-  base: '/Oholbuchtu/',
+  base,
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
@@ -9,7 +12,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          'tensorflow': ['@tensorflow/tfjs', '@tensorflow-models/pose-detection']
+          tensorflow: ['@tensorflow/tfjs', '@tensorflow-models/pose-detection']
         }
       }
     }
