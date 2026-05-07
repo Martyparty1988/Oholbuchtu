@@ -1,7 +1,7 @@
 {
-  "name": "Pubic AR Studio",
-  "short_name": "PubicAR",
-  "description": "Soukromá AR aplikace pro rychlé porovnání šablon. Kamera běží pouze lokálně v zařízení.",
+  "name": "Ohol Buchtu Studio",
+  "short_name": "OholBuchtu",
+  "description": "Srandovní soukromá AR appka pro šablony, vibe score, randomizer a lehce drzé verdikty.",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
