@@ -6,6 +6,7 @@ const MIN_HIP_SCORE = 0.2;
 const DETECTION_INTERVAL_MS = 120;
 const BASE_URL = import.meta.env.BASE_URL || '/';
 const FUN_TEMPLATES = ['full', 'brazilian', 'landing-strip', 'triangle', 'heart', 'lightning', 'star'];
+const DEFAULT_STENCIL = { scale: 1, offsetX: 0, offsetY: 0, opacity: 0.82 };
 
 class PubicARApp {
     constructor() {
@@ -28,6 +29,8 @@ class PubicARApp {
         this.vibeEl = document.getElementById('template-vibe');
         this.vibeFill = document.getElementById('vibe-fill');
         this.jokeEl = document.getElementById('template-joke');
+        this.shapeCards = [...document.querySelectorAll('[data-template]')];
+        this.adjustButtons = [...document.querySelectorAll('[data-adjust]')];
 
         this.detector = null;
         this.stream = null;
@@ -38,35 +41,36 @@ class PubicARApp {
         this.chaosTimeoutId = null;
         this.isRunning = false;
         this.isChaosMode = false;
+        this.lastStencilAnchor = null;
+        this.stencil = { ...DEFAULT_STENCIL };
 
         this.templateMeta = {
-            none: { label: 'Decent mód', score: 0, joke: 'Zatím safe. Nuda, ale bezpečná nuda.', status: 'Šablona vypnutá. Decent mód.' },
-            full: { label: 'Lesní království', score: 8, joke: 'Oldschool boss mode. Respekt.', status: 'Full mód zapnutý. Příroda se hlásí.' },
-            brazilian: { label: 'Aero mód', score: 9, joke: 'Maximum aerodynamika. Větrný tunel by zatleskal.', status: 'Brazilian vybrán. Rychlost a drzost.' },
-            'landing-strip': { label: 'Runway ready', score: 7, joke: 'Minimalismus s navigací zdarma.', status: 'Landing Strip. Prosíme připoutejte se.' },
-            triangle: { label: 'Geometrická odvaha', score: 8, joke: 'Trojúhelník s podezřele vysokým sebevědomím.', status: 'Triangle mód. Matika našla smysl.' },
-            heart: { label: 'Romantický chaos', score: 10, joke: 'Cupid approved. Sladké, ale nebezpečné.', status: 'Heart vybrán. Láska, drama, risk.' },
-            lightning: { label: 'Pojistky ven', score: 9, joke: 'Tahle energie může vyhodit jističe.', status: 'Lightning mód. Elektrikář by brečel.' },
-            star: { label: 'Main character', score: 10, joke: 'Main character energy detected.', status: 'Star vybrán. Nástup na scénu.' }
+            none: { label: 'Bez šablony', score: 0, joke: 'Vyber tvar dole. Uvidíš obrys přímo v kameře.', status: 'Bez šablony. Vyber konkrétní tvar.' },
+            full: { label: 'Full', score: 8, joke: 'Plná šablona. Přilož obrys, zarovnej a máš vodítko.', status: 'Full šablona zapnutá. Zarovnej obrys na sebe.' },
+            brazilian: { label: 'Brazilian', score: 9, joke: 'Úzký středový tvar. Hodí se pro přesné vedení.', status: 'Brazilian šablona. Použij +/− a šipky pro doladění.' },
+            'landing-strip': { label: 'Landing Strip', score: 7, joke: 'Rovný pruh jako jasné vodítko na holení.', status: 'Landing Strip zapnutý. Drž se obrysu.' },
+            triangle: { label: 'Triangle', score: 8, joke: 'Trojúhelník s čistou hranou pro snadné zarovnání.', status: 'Triangle šablona. Zarovnej špičku a hrany.' },
+            heart: { label: 'Heart', score: 10, joke: 'Srdce. Trochu sranda, trochu challenge.', status: 'Heart šablona. Bude chtít přesnější ruku.' },
+            lightning: { label: 'Lightning', score: 9, joke: 'Blesk je výrazný tvar. Hlavně nespěchat.', status: 'Lightning šablona. Řiď se světlým obrysem.' },
+            star: { label: 'Star', score: 10, joke: 'Hvězda jako party stencil. Neber to moc vážně.', status: 'Star šablona. Pro odvážné a pevnou ruku.' }
         };
 
         this.roastPool = [
-            'Tohle už není styl, to je událost.',
-            'Nebezpečně vysoká aura. Dej tomu helmu.',
-            'Tohle má větší charisma než půlka Instagramu.',
-            'Lehce šílené, ale přesně proto to funguje.',
-            'Estetický risk, který překvapivě nepodklouzl.',
-            'Tady někdo omylem odemkl premium sebevědomí.',
-            'Vibe je tak silný, že by chtěl vlastní playlist.'
+            'Obrys zvýrazněný. Teď už je to skoro technický výkres.',
+            'Šablona svítí jak runway. Stačí zarovnat a jet podle hran.',
+            'Vodítko je připravené. Ruka pevná, ego ještě pevnější.',
+            'Zvýrazněno. Tohle už nepřehlédne ani ospalé zrcadlo.',
+            'Obrys má stage presence. Teď jen nepodlehnout chaosu.'
         ];
     }
 
     init() {
         this.setupEventListeners();
         this.updateFunPanel(this.currentTemplate);
+        this.updateShapeCards();
         this.updateCameraButton();
         this.syncMirrorState();
-        this.setStatus('Připraveno. Vyber šablonu nebo zapni kameru.');
+        this.setStatus('Vyber viditelnou šablonu dole. Pak ji můžeš posunout a zvětšit.');
     }
 
     setupEventListeners() {
@@ -76,11 +80,9 @@ class PubicARApp {
         this.randomButton?.addEventListener('click', () => this.pickRandomTemplate());
         this.boostButton?.addEventListener('click', () => this.boostVibe());
         this.chaosButton?.addEventListener('click', () => this.toggleChaosMode());
-        this.select?.addEventListener('change', (event) => {
-            this.currentTemplate = event.target.value;
-            this.updateFunPanel(this.currentTemplate);
-            this.setStatus(this.templateMeta[this.currentTemplate]?.status || 'Šablona vybraná.');
-        });
+        this.shapeCards.forEach((button) => button.addEventListener('click', () => this.applyTemplate(button.dataset.template)));
+        this.adjustButtons.forEach((button) => button.addEventListener('click', () => this.adjustStencil(button.dataset.adjust)));
+        this.select?.addEventListener('change', (event) => this.applyTemplate(event.target.value));
         this.mirrorToggle?.addEventListener('change', () => this.syncMirrorState());
         window.addEventListener('resize', () => this.resizeCanvasToVideo());
         document.addEventListener('visibilitychange', () => {
@@ -92,22 +94,24 @@ class PubicARApp {
         const randomTemplate = FUN_TEMPLATES[Math.floor(Math.random() * FUN_TEMPLATES.length)];
         this.applyTemplate(randomTemplate);
         this.pulsePartyMode(900);
-        this.setStatus(`Random vybral: ${this.getSelectedTemplateText()}`);
+        this.setStatus(`Random vybral: ${this.templateMeta[randomTemplate]?.label}.`);
     }
 
     boostVibe() {
         if (this.currentTemplate === 'none') {
-            this.setStatus('Nejdřív vyber šablonu. Turbo nenafoukne nicotu.');
+            this.setStatus('Nejdřív vyber tvar šablony. Bez tvaru není co zvýraznit.');
             this.pulsePartyMode(600);
             return;
         }
 
+        this.stencil.opacity = this.stencil.opacity >= 0.96 ? 0.74 : Math.min(1, this.stencil.opacity + 0.14);
         const meta = this.templateMeta[this.currentTemplate] || this.templateMeta.none;
-        const boostedScore = Math.min(10, meta.score + 1 + Math.floor(Math.random() * 2));
+        const boostedScore = Math.min(10, meta.score + 1);
         const joke = this.roastPool[Math.floor(Math.random() * this.roastPool.length)];
         this.renderFunPanel(meta.label, boostedScore, joke);
-        this.pulsePartyMode(1400);
-        this.setStatus(`Vibe boostnutý na ${boostedScore}/10.`);
+        this.drawLastStencil();
+        this.pulsePartyMode(1000);
+        this.setStatus(`Obrys zvýrazněný. Krytí ${Math.round(this.stencil.opacity * 100)} %.`);
     }
 
     toggleChaosMode() {
@@ -116,13 +120,13 @@ class PubicARApp {
 
         if (this.isChaosMode) {
             this.chaosButton.textContent = '🪩 ON';
-            this.setStatus('Chaos mód ON. Appka si myslí, že je diskokoule.');
+            this.setStatus('Chaos ON. Šablony se budou měnit samy.');
             this.startChaosLoop();
             return;
         }
 
         this.chaosButton.textContent = '🪩 Chaos';
-        this.setStatus('Chaos mód OFF. Zase se tváříme slušně.');
+        this.setStatus('Chaos OFF. Zůstává aktuální šablona.');
         this.stopChaosLoop();
     }
 
@@ -145,7 +149,29 @@ class PubicARApp {
         this.currentTemplate = template;
         if (this.select) this.select.value = template;
         this.updateFunPanel(template);
+        this.updateShapeCards();
+        this.drawLastStencil();
         if (announce) this.setStatus(this.templateMeta[template]?.status || 'Šablona vybraná.');
+    }
+
+    adjustStencil(action) {
+        const steps = {
+            up: () => { this.stencil.offsetY -= 12; },
+            down: () => { this.stencil.offsetY += 12; },
+            bigger: () => { this.stencil.scale = Math.min(1.8, this.stencil.scale + 0.08); },
+            smaller: () => { this.stencil.scale = Math.max(0.45, this.stencil.scale - 0.08); },
+            reset: () => { this.stencil = { ...DEFAULT_STENCIL }; }
+        };
+
+        steps[action]?.();
+        this.drawLastStencil();
+        this.setStatus(`Doladění: velikost ${Math.round(this.stencil.scale * 100)} %, posun Y ${this.stencil.offsetY}px.`);
+    }
+
+    updateShapeCards() {
+        this.shapeCards.forEach((button) => {
+            button.classList.toggle('active', button.dataset.template === this.currentTemplate);
+        });
     }
 
     updateFunPanel(template) {
@@ -155,13 +181,9 @@ class PubicARApp {
 
     renderFunPanel(label, score, joke) {
         if (this.templateLabel) this.templateLabel.textContent = label;
-        if (this.vibeEl) this.vibeEl.textContent = `Vibe ${score}/10`;
+        if (this.vibeEl) this.vibeEl.textContent = `Vodítko ${score}/10`;
         if (this.vibeFill) this.vibeFill.style.width = `${score * 10}%`;
         if (this.jokeEl) this.jokeEl.textContent = joke;
-    }
-
-    getSelectedTemplateText() {
-        return this.select?.options[this.select.selectedIndex]?.text || 'neznámá šablona';
     }
 
     pulsePartyMode(duration = 1000) {
@@ -188,7 +210,7 @@ class PubicARApp {
             this.stopButton.disabled = false;
             this.switchButton.disabled = false;
             this.updateCameraButton();
-            this.setStatus(`Kamera běží: ${this.facingMode === 'user' ? 'selfie' : 'zadní'}.`);
+            this.setStatus(`Kamera běží. Šablonu můžeš posouvat šipkami a měnit +/−.`);
             this.detectAndDraw();
         } catch (error) {
             console.error('Start error:', error);
@@ -215,6 +237,7 @@ class PubicARApp {
         }
 
         this.video.srcObject = null;
+        this.lastStencilAnchor = null;
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.emptyState?.classList.remove('hidden');
         this.startButton.disabled = false;
@@ -222,7 +245,7 @@ class PubicARApp {
         this.switchButton.disabled = false;
         this.updateCameraButton();
 
-        if (updateStatus) this.setStatus('Kamera zastavená. Soukromí v cajku.');
+        if (updateStatus) this.setStatus('Kamera zastavená. Šablona zůstává vybraná.');
     }
 
     async switchCamera() {
@@ -378,12 +401,14 @@ class PubicARApp {
             const pose = poses[0];
             if (pose?.score > MIN_POSE_SCORE) {
                 this.drawPoseOverlay(pose);
-            } else if (this.currentTemplate !== 'none') {
-                this.setStatus('Nevidím dobře postavu. Zkus odstoupit nebo přidat světlo.');
+            } else {
+                this.drawFallbackStencil();
+                if (this.currentTemplate !== 'none') this.setStatus('Nevidím boky. Zobrazuju šablonu doprostřed ručně.');
             }
         } catch (error) {
             console.error('Pose detection error:', error);
-            this.setStatus('Detekce se zasekla. Zkus kameru zastavit a znovu spustit.');
+            this.drawFallbackStencil();
+            this.setStatus('Detekce se zasekla. Šablona je aspoň ručně uprostřed.');
         }
 
         await tf.nextFrame();
@@ -396,32 +421,71 @@ class PubicARApp {
         const leftHip = pose.keypoints.find((keypoint) => keypoint.name === 'left_hip');
         const rightHip = pose.keypoints.find((keypoint) => keypoint.name === 'right_hip');
         if (!leftHip || !rightHip || leftHip.score < MIN_HIP_SCORE || rightHip.score < MIN_HIP_SCORE) {
-            this.setStatus('Potřebuju lépe vidět boky. Nejsem věštkyně.');
+            this.drawFallbackStencil();
             return;
         }
 
         const hipDistance = Math.abs(leftHip.x - rightHip.x);
-        const centerX = (leftHip.x + rightHip.x) / 2;
-        const centerY = (leftHip.y + rightHip.y) / 2 + hipDistance * 0.35;
-        const width = Math.max(hipDistance * 0.78, 32);
-        const height = width * 1.12;
-        this.drawTemplate(centerX, centerY, width, height);
+        const anchor = {
+            x: (leftHip.x + rightHip.x) / 2,
+            y: (leftHip.y + rightHip.y) / 2 + hipDistance * 0.35,
+            width: Math.max(hipDistance * 0.82, 44)
+        };
+        this.lastStencilAnchor = anchor;
+        this.drawStencil(anchor);
     }
 
-    drawTemplate(x, y, width, height) {
+    drawFallbackStencil() {
+        if (this.currentTemplate === 'none' || !this.canvas.width || !this.canvas.height) return;
+        const anchor = this.lastStencilAnchor || {
+            x: this.canvas.width / 2,
+            y: this.canvas.height * 0.62,
+            width: Math.min(this.canvas.width * 0.34, 180)
+        };
+        this.drawStencil(anchor);
+    }
+
+    drawLastStencil() {
+        if (!this.ctx || !this.canvas.width || !this.canvas.height) return;
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.drawFallbackStencil();
+    }
+
+    drawStencil(anchor) {
+        if (this.currentTemplate === 'none') return;
+
+        const width = anchor.width * this.stencil.scale;
+        const height = width * 1.12;
+        const x = anchor.x + this.stencil.offsetX;
+        const y = anchor.y + this.stencil.offsetY;
         const hue = this.getTemplateHue();
+
         this.ctx.save();
-        this.ctx.fillStyle = `hsla(${hue}, 88%, 42%, 0.92)`;
-        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
-        this.ctx.lineWidth = Math.max(width * 0.025, 1.5);
-        this.ctx.shadowColor = `hsla(${hue}, 90%, 55%, 0.55)`;
-        this.ctx.shadowBlur = this.isChaosMode ? 26 : 12;
-        this.ctx.shadowOffsetY = 4;
+        this.ctx.globalAlpha = this.stencil.opacity;
+        this.ctx.fillStyle = `hsla(${hue}, 88%, 48%, 0.3)`;
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.96)';
+        this.ctx.lineWidth = Math.max(width * 0.038, 3);
+        this.ctx.setLineDash([12, 8]);
+        this.ctx.shadowColor = `hsla(${hue}, 92%, 58%, 0.75)`;
+        this.ctx.shadowBlur = this.isChaosMode ? 28 : 18;
         this.createTemplatePath(x, y, width, height);
         this.ctx.fill();
         this.ctx.stroke();
-        this.ctx.clip();
-        this.drawHairTexture(x, y, width, height);
+        this.ctx.setLineDash([]);
+        this.ctx.globalAlpha = Math.min(1, this.stencil.opacity + 0.1);
+        this.drawCenterGuide(x, y, width, height);
+        this.ctx.restore();
+    }
+
+    drawCenterGuide(x, y, width, height) {
+        this.ctx.save();
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.78)';
+        this.ctx.lineWidth = Math.max(width * 0.012, 1.2);
+        this.ctx.setLineDash([5, 7]);
+        this.ctx.beginPath();
+        this.ctx.moveTo(x, y - height * 0.62);
+        this.ctx.lineTo(x, y + height * 0.62);
+        this.ctx.stroke();
         this.ctx.restore();
     }
 
@@ -444,13 +508,13 @@ class PubicARApp {
 
         switch (this.currentTemplate) {
             case 'full':
-                this.roundedRect(x - halfW, y - halfH, width, height, width * 0.18);
+                this.roundedRect(x - halfW, y - halfH, width, height, width * 0.2);
                 break;
             case 'brazilian':
-                this.roundedRect(x - width / 10, y - halfH, width / 5, height, width * 0.08);
+                this.roundedRect(x - width / 9, y - halfH, width / 4.5, height, width * 0.08);
                 break;
             case 'landing-strip':
-                this.roundedRect(x - width / 5, y - halfH, width / 2.5, height, width * 0.08);
+                this.roundedRect(x - width / 4.5, y - halfH, width / 2.25, height, width * 0.08);
                 break;
             case 'triangle':
                 this.ctx.moveTo(x, y - halfH);
@@ -462,11 +526,11 @@ class PubicARApp {
                 this.drawHeartPath(x, y, width, height);
                 break;
             case 'lightning':
-                this.ctx.moveTo(x - width * 0.25, y - halfH);
-                this.ctx.lineTo(x + width * 0.08, y - height * 0.08);
-                this.ctx.lineTo(x - width * 0.06, y - height * 0.08);
-                this.ctx.lineTo(x + width * 0.24, y + halfH);
-                this.ctx.lineTo(x - width * 0.13, y + height * 0.1);
+                this.ctx.moveTo(x - width * 0.18, y - halfH);
+                this.ctx.lineTo(x + width * 0.08, y - height * 0.09);
+                this.ctx.lineTo(x - width * 0.07, y - height * 0.09);
+                this.ctx.lineTo(x + width * 0.22, y + halfH);
+                this.ctx.lineTo(x - width * 0.15, y + height * 0.1);
                 this.ctx.lineTo(x + width * 0.04, y + height * 0.1);
                 this.ctx.closePath();
                 break;
@@ -510,28 +574,6 @@ class PubicARApp {
             else this.ctx.lineTo(px, py);
         }
         this.ctx.closePath();
-    }
-
-    drawHairTexture(x, y, width, height) {
-        this.ctx.shadowColor = 'transparent';
-        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.42)';
-        this.ctx.lineWidth = Math.max(width * 0.01, 1);
-
-        for (let index = 0; index < 42; index += 1) {
-            const rx = x + (this.seededRandom(index, 1) - 0.5) * width * 0.9;
-            const ry = y + (this.seededRandom(index, 2) - 0.5) * height * 0.9;
-            const length = 4 + this.seededRandom(index, 3) * 10;
-            const angle = this.seededRandom(index, 4) * Math.PI;
-            this.ctx.beginPath();
-            this.ctx.moveTo(rx, ry);
-            this.ctx.lineTo(rx + Math.cos(angle) * length, ry + Math.sin(angle) * length);
-            this.ctx.stroke();
-        }
-    }
-
-    seededRandom(index, salt) {
-        const value = Math.sin(index * 12.9898 + salt * 78.233 + this.currentTemplate.length * 37.719) * 43758.5453;
-        return value - Math.floor(value);
     }
 }
 
