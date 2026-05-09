@@ -40,54 +40,14 @@ class PubicARApp {
         this.isChaosMode = false;
 
         this.templateMeta = {
-            none: {
-                label: 'Decent mód',
-                score: 0,
-                joke: 'Zatím hraješ safe. Nuda, ale bezpečná nuda.',
-                status: 'Šablona vypnutá. Zatím decent mód, žádná divočina.'
-            },
-            full: {
-                label: 'Lesní království',
-                score: 8,
-                joke: 'Oldschool boss mode. Tohle nepotřebuje vysvětlení, jen respekt.',
-                status: 'Full mód zapnutý. Příroda se hlásí o slovo.'
-            },
-            brazilian: {
-                label: 'Aero mód',
-                score: 9,
-                joke: 'Maximum aerodynamika. Větrný tunel by zatleskal.',
-                status: 'Brazilian vybrán. Rychlost, elegance a lehká drzost.'
-            },
-            'landing-strip': {
-                label: 'Runway ready',
-                score: 7,
-                joke: 'Minimalismus s navigací zdarma. Let může začít.',
-                status: 'Landing Strip vybrán. Prosíme připoutejte se.'
-            },
-            triangle: {
-                label: 'Geometrická odvaha',
-                score: 8,
-                joke: 'Trojúhelník, co má víc sebedůvěry než maturant s tahákem.',
-                status: 'Triangle mód. Matika konečně našla smysl.'
-            },
-            heart: {
-                label: 'Romantický chaos',
-                score: 10,
-                joke: 'Cupid approved. Trochu sladké, trochu nebezpečné.',
-                status: 'Heart vybrán. Láska, drama, estetický risk.'
-            },
-            lightning: {
-                label: 'Pojistky ven',
-                score: 9,
-                joke: 'Tahle energie může vyhodit jističe i sebevědomí sousedům.',
-                status: 'Lightning mód. Elektrikář by brečel, ale styl máš.'
-            },
-            star: {
-                label: 'Main character',
-                score: 10,
-                joke: 'Main character energy detected. Netflix už volá.',
-                status: 'Star vybrán. Tady se nechodí, tady se nastupuje na scénu.'
-            }
+            none: { label: 'Decent mód', score: 0, joke: 'Zatím safe. Nuda, ale bezpečná nuda.', status: 'Šablona vypnutá. Decent mód.' },
+            full: { label: 'Lesní království', score: 8, joke: 'Oldschool boss mode. Respekt.', status: 'Full mód zapnutý. Příroda se hlásí.' },
+            brazilian: { label: 'Aero mód', score: 9, joke: 'Maximum aerodynamika. Větrný tunel by zatleskal.', status: 'Brazilian vybrán. Rychlost a drzost.' },
+            'landing-strip': { label: 'Runway ready', score: 7, joke: 'Minimalismus s navigací zdarma.', status: 'Landing Strip. Prosíme připoutejte se.' },
+            triangle: { label: 'Geometrická odvaha', score: 8, joke: 'Trojúhelník s podezřele vysokým sebevědomím.', status: 'Triangle mód. Matika našla smysl.' },
+            heart: { label: 'Romantický chaos', score: 10, joke: 'Cupid approved. Sladké, ale nebezpečné.', status: 'Heart vybrán. Láska, drama, risk.' },
+            lightning: { label: 'Pojistky ven', score: 9, joke: 'Tahle energie může vyhodit jističe.', status: 'Lightning mód. Elektrikář by brečel.' },
+            star: { label: 'Main character', score: 10, joke: 'Main character energy detected.', status: 'Star vybrán. Nástup na scénu.' }
         };
 
         this.roastPool = [
@@ -97,15 +57,16 @@ class PubicARApp {
             'Lehce šílené, ale přesně proto to funguje.',
             'Estetický risk, který překvapivě nepodklouzl.',
             'Tady někdo omylem odemkl premium sebevědomí.',
-            'Vibe je tak silný, že by si zasloužil vlastní playlist.'
+            'Vibe je tak silný, že by chtěl vlastní playlist.'
         ];
     }
 
     init() {
         this.setupEventListeners();
         this.updateFunPanel(this.currentTemplate);
-        this.setStatus('Připraveno. Vyber šablonu, hoď random nebo rovnou zapni kameru.');
+        this.updateCameraButton();
         this.syncMirrorState();
+        this.setStatus('Připraveno. Vyber šablonu nebo zapni kameru.');
     }
 
     setupEventListeners() {
@@ -115,19 +76,15 @@ class PubicARApp {
         this.randomButton?.addEventListener('click', () => this.pickRandomTemplate());
         this.boostButton?.addEventListener('click', () => this.boostVibe());
         this.chaosButton?.addEventListener('click', () => this.toggleChaosMode());
-
         this.select?.addEventListener('change', (event) => {
             this.currentTemplate = event.target.value;
             this.updateFunPanel(this.currentTemplate);
             this.setStatus(this.templateMeta[this.currentTemplate]?.status || 'Šablona vybraná.');
         });
-
         this.mirrorToggle?.addEventListener('change', () => this.syncMirrorState());
         window.addEventListener('resize', () => this.resizeCanvasToVideo());
         document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                this.stop(false);
-            }
+            if (document.hidden) this.stop(false);
         });
     }
 
@@ -135,12 +92,12 @@ class PubicARApp {
         const randomTemplate = FUN_TEMPLATES[Math.floor(Math.random() * FUN_TEMPLATES.length)];
         this.applyTemplate(randomTemplate);
         this.pulsePartyMode(900);
-        this.setStatus(`Náhodná buchta vybrala: ${this.getSelectedTemplateText()}`);
+        this.setStatus(`Random vybral: ${this.getSelectedTemplateText()}`);
     }
 
     boostVibe() {
         if (this.currentTemplate === 'none') {
-            this.setStatus('Nejdřív vyber nějakou šablonu, ať je co boostit. Ani turbo nenafoukne nicotu.');
+            this.setStatus('Nejdřív vyber šablonu. Turbo nenafoukne nicotu.');
             this.pulsePartyMode(600);
             return;
         }
@@ -148,10 +105,9 @@ class PubicARApp {
         const meta = this.templateMeta[this.currentTemplate] || this.templateMeta.none;
         const boostedScore = Math.min(10, meta.score + 1 + Math.floor(Math.random() * 2));
         const joke = this.roastPool[Math.floor(Math.random() * this.roastPool.length)];
-
         this.renderFunPanel(meta.label, boostedScore, joke);
         this.pulsePartyMode(1400);
-        this.setStatus(`Vibe boostnutý na ${boostedScore}/10. Tohle už začíná být nebezpečně ikonické.`);
+        this.setStatus(`Vibe boostnutý na ${boostedScore}/10.`);
     }
 
     toggleChaosMode() {
@@ -159,14 +115,14 @@ class PubicARApp {
         document.body.classList.toggle('chaos-mode', this.isChaosMode);
 
         if (this.isChaosMode) {
-            this.chaosButton.textContent = '🪩 Chaos ON';
-            this.setStatus('Chaos mód zapnutý. Aplikace si teď myslí, že je diskokoule.');
+            this.chaosButton.textContent = '🪩 ON';
+            this.setStatus('Chaos mód ON. Appka si myslí, že je diskokoule.');
             this.startChaosLoop();
             return;
         }
 
         this.chaosButton.textContent = '🪩 Chaos';
-        this.setStatus('Chaos mód vypnutý. Zase se tváříme jako slušná aplikace.');
+        this.setStatus('Chaos mód OFF. Zase se tváříme slušně.');
         this.stopChaosLoop();
     }
 
@@ -180,22 +136,16 @@ class PubicARApp {
     }
 
     stopChaosLoop() {
-        if (this.chaosTimeoutId) {
-            window.clearInterval(this.chaosTimeoutId);
-            this.chaosTimeoutId = null;
-        }
+        if (!this.chaosTimeoutId) return;
+        window.clearInterval(this.chaosTimeoutId);
+        this.chaosTimeoutId = null;
     }
 
     applyTemplate(template, announce = true) {
         this.currentTemplate = template;
-        if (this.select) {
-            this.select.value = template;
-        }
+        if (this.select) this.select.value = template;
         this.updateFunPanel(template);
-
-        if (announce) {
-            this.setStatus(this.templateMeta[template]?.status || 'Šablona vybraná.');
-        }
+        if (announce) this.setStatus(this.templateMeta[template]?.status || 'Šablona vybraná.');
     }
 
     updateFunPanel(template) {
@@ -217,9 +167,7 @@ class PubicARApp {
     pulsePartyMode(duration = 1000) {
         document.body.classList.add('party-mode');
         window.setTimeout(() => {
-            if (!this.isChaosMode) {
-                document.body.classList.remove('party-mode');
-            }
+            if (!this.isChaosMode) document.body.classList.remove('party-mode');
         }, duration);
     }
 
@@ -230,17 +178,17 @@ class PubicARApp {
             this.setControlsDisabled(true);
             this.showLoading('Načítám AR model…');
             await this.loadDetector();
-
-            this.showLoading('Spouštím kameru…');
+            this.showLoading(`Spouštím ${this.facingMode === 'user' ? 'selfie' : 'zadní'} kameru…`);
             await this.setupCamera();
 
             this.hideLoading();
             this.isRunning = true;
             this.emptyState?.classList.add('hidden');
+            this.startButton.disabled = true;
             this.stopButton.disabled = false;
             this.switchButton.disabled = false;
-            this.startButton.disabled = true;
-            this.setStatus('Kamera běží. Postav se tak, aby byly vidět boky. Appka se bude tvářit, že je profesionál.');
+            this.updateCameraButton();
+            this.setStatus(`Kamera běží: ${this.facingMode === 'user' ? 'selfie' : 'zadní'}.`);
             this.detectAndDraw();
         } catch (error) {
             console.error('Start error:', error);
@@ -249,6 +197,7 @@ class PubicARApp {
         } finally {
             this.hideLoading();
             this.setControlsDisabled(false);
+            this.updateCameraButton();
         }
     }
 
@@ -270,36 +219,53 @@ class PubicARApp {
         this.emptyState?.classList.remove('hidden');
         this.startButton.disabled = false;
         this.stopButton.disabled = true;
-        this.switchButton.disabled = true;
+        this.switchButton.disabled = false;
+        this.updateCameraButton();
 
-        if (updateStatus) {
-            this.setStatus('Kamera zastavená. Soukromí v cajku, ostuda nikam neodešla.');
-        }
+        if (updateStatus) this.setStatus('Kamera zastavená. Soukromí v cajku.');
     }
 
     async switchCamera() {
-        if (!this.isRunning) return;
-
         this.facingMode = this.facingMode === 'user' ? 'environment' : 'user';
-        this.setStatus('Přepínám kameru… malý technický break, žádná panika.');
+        this.updateCameraButton();
+        this.syncMirrorState();
+
+        if (!this.isRunning) {
+            this.setStatus(`Vybraná kamera: ${this.facingMode === 'user' ? 'selfie' : 'zadní'}. Dej Start.`);
+            return;
+        }
+
+        this.setStatus(`Přepínám na ${this.facingMode === 'user' ? 'selfie' : 'zadní'} kameru…`);
         this.stop(false);
         await this.start();
     }
 
+    updateCameraButton() {
+        if (!this.switchButton) return;
+        const nextCameraLabel = this.facingMode === 'user' ? 'Zadní kamera' : 'Selfie kamera';
+        this.switchButton.textContent = nextCameraLabel;
+        this.switchButton.title = `Přepnout na ${nextCameraLabel.toLowerCase()}`;
+        this.switchButton.setAttribute('aria-label', `Přepnout na ${nextCameraLabel.toLowerCase()}`);
+        this.switchButton.classList.toggle('active-camera', this.facingMode === 'environment');
+    }
+
     setControlsDisabled(disabled) {
         if (this.startButton && !this.isRunning) this.startButton.disabled = disabled;
-        if (this.switchButton) this.switchButton.disabled = disabled || !this.isRunning;
+        if (this.switchButton) this.switchButton.disabled = disabled;
         if (this.select) this.select.disabled = disabled;
     }
 
     syncMirrorState() {
-        const shouldMirror = Boolean(this.mirrorToggle?.checked);
+        const shouldMirror = this.facingMode === 'user' && Boolean(this.mirrorToggle?.checked);
         this.videoContainer?.classList.toggle('mirrored', shouldMirror);
+        if (this.mirrorToggle) {
+            this.mirrorToggle.disabled = this.facingMode !== 'user';
+            this.mirrorToggle.closest('.toggle')?.classList.toggle('muted', this.facingMode !== 'user');
+        }
     }
 
     showLoading(message) {
         if (!this.loadingEl) return;
-
         this.loadingEl.textContent = message;
         this.loadingEl.classList.remove('hidden');
         this.loadingEl.setAttribute('aria-hidden', 'false');
@@ -307,15 +273,12 @@ class PubicARApp {
 
     hideLoading() {
         if (!this.loadingEl) return;
-
         this.loadingEl.classList.add('hidden');
         this.loadingEl.setAttribute('aria-hidden', 'true');
     }
 
     setStatus(message) {
-        if (this.statusEl) {
-            this.statusEl.textContent = message;
-        }
+        if (this.statusEl) this.statusEl.textContent = message;
     }
 
     showError(message) {
@@ -329,18 +292,16 @@ class PubicARApp {
             await tf.setBackend('webgl');
             await tf.ready();
         } catch (error) {
-            console.warn('WebGL backend unavailable, falling back to TensorFlow default backend.', error);
+            console.warn('WebGL backend unavailable, falling back to default backend.', error);
             await tf.ready();
         }
 
-        const detectorConfig = {
-            modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
-            enableSmoothing: true
-        };
-
         this.detector = await poseDetection.createDetector(
             poseDetection.SupportedModels.MoveNet,
-            detectorConfig
+            {
+                modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
+                enableSmoothing: true
+            }
         );
     }
 
@@ -349,33 +310,46 @@ class PubicARApp {
             throw new Error('Tvoje zařízení nepodporuje přístup ke kameře.');
         }
 
-        const stream = await navigator.mediaDevices.getUserMedia({
-            audio: false,
-            video: {
-                facingMode: { ideal: this.facingMode },
-                width: { ideal: 960 },
-                height: { ideal: 1280 }
-            }
-        });
+        let stream;
+        try {
+            stream = await navigator.mediaDevices.getUserMedia(this.getCameraConstraints(true));
+        } catch (exactError) {
+            console.warn('Exact camera mode failed, trying ideal mode.', exactError);
+            stream = await navigator.mediaDevices.getUserMedia(this.getCameraConstraints(false));
+        }
 
         this.stream = stream;
-        this.video.srcObject = stream;
+        const actualFacingMode = stream.getVideoTracks()[0]?.getSettings?.().facingMode;
+        if (actualFacingMode === 'user' || actualFacingMode === 'environment') {
+            this.facingMode = actualFacingMode;
+        }
 
+        this.video.srcObject = stream;
         await new Promise((resolve, reject) => {
             this.video.onloadedmetadata = resolve;
             this.video.onerror = reject;
         });
-
         await this.video.play();
+        this.updateCameraButton();
+        this.syncMirrorState();
         this.resizeCanvasToVideo();
+    }
+
+    getCameraConstraints(useExactFacingMode) {
+        return {
+            audio: false,
+            video: {
+                facingMode: useExactFacingMode ? { exact: this.facingMode } : { ideal: this.facingMode },
+                width: { ideal: 960 },
+                height: { ideal: 1280 }
+            }
+        };
     }
 
     resizeCanvasToVideo() {
         const width = this.video.videoWidth;
         const height = this.video.videoHeight;
-
         if (!width || !height) return;
-
         if (this.canvas.width !== width || this.canvas.height !== height) {
             this.canvas.width = width;
             this.canvas.height = height;
@@ -401,12 +375,11 @@ class PubicARApp {
             this.resizeCanvasToVideo();
             const poses = await this.detector.estimatePoses(this.video, { maxPoses: 1, flipHorizontal: false });
             this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
             const pose = poses[0];
             if (pose?.score > MIN_POSE_SCORE) {
                 this.drawPoseOverlay(pose);
             } else if (this.currentTemplate !== 'none') {
-                this.setStatus('Nevidím dobře postavu. Zkus odstoupit nebo přidat světlo. AI si vzala brýle z Lidlu.');
+                this.setStatus('Nevidím dobře postavu. Zkus odstoupit nebo přidat světlo.');
             }
         } catch (error) {
             console.error('Pose detection error:', error);
@@ -422,9 +395,8 @@ class PubicARApp {
 
         const leftHip = pose.keypoints.find((keypoint) => keypoint.name === 'left_hip');
         const rightHip = pose.keypoints.find((keypoint) => keypoint.name === 'right_hip');
-
         if (!leftHip || !rightHip || leftHip.score < MIN_HIP_SCORE || rightHip.score < MIN_HIP_SCORE) {
-            this.setStatus('Šablonu nemám kam přesně položit. Potřebuju lépe vidět boky, nejsem věštkyně.');
+            this.setStatus('Potřebuju lépe vidět boky. Nejsem věštkyně.');
             return;
         }
 
@@ -433,13 +405,11 @@ class PubicARApp {
         const centerY = (leftHip.y + rightHip.y) / 2 + hipDistance * 0.35;
         const width = Math.max(hipDistance * 0.78, 32);
         const height = width * 1.12;
-
         this.drawTemplate(centerX, centerY, width, height);
     }
 
     drawTemplate(x, y, width, height) {
         const hue = this.getTemplateHue();
-
         this.ctx.save();
         this.ctx.fillStyle = `hsla(${hue}, 88%, 42%, 0.92)`;
         this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
@@ -447,7 +417,6 @@ class PubicARApp {
         this.ctx.shadowColor = `hsla(${hue}, 90%, 55%, 0.55)`;
         this.ctx.shadowBlur = this.isChaosMode ? 26 : 12;
         this.ctx.shadowOffsetY = 4;
-
         this.createTemplatePath(x, y, width, height);
         this.ctx.fill();
         this.ctx.stroke();
@@ -457,7 +426,7 @@ class PubicARApp {
     }
 
     getTemplateHue() {
-        const hueMap = {
+        return {
             full: 265,
             brazilian: 326,
             'landing-strip': 194,
@@ -465,15 +434,12 @@ class PubicARApp {
             heart: 345,
             lightning: 42,
             star: 280
-        };
-
-        return hueMap[this.currentTemplate] || 222;
+        }[this.currentTemplate] || 222;
     }
 
     createTemplatePath(x, y, width, height) {
         const halfW = width / 2;
         const halfH = height / 2;
-
         this.ctx.beginPath();
 
         switch (this.currentTemplate) {
@@ -540,12 +506,8 @@ class PubicARApp {
             const angle = (index * Math.PI / 5) - Math.PI / 2;
             const px = x + radius * Math.cos(angle);
             const py = y + radius * Math.sin(angle);
-
-            if (index === 0) {
-                this.ctx.moveTo(px, py);
-            } else {
-                this.ctx.lineTo(px, py);
-            }
+            if (index === 0) this.ctx.moveTo(px, py);
+            else this.ctx.lineTo(px, py);
         }
         this.ctx.closePath();
     }
@@ -560,7 +522,6 @@ class PubicARApp {
             const ry = y + (this.seededRandom(index, 2) - 0.5) * height * 0.9;
             const length = 4 + this.seededRandom(index, 3) * 10;
             const angle = this.seededRandom(index, 4) * Math.PI;
-
             this.ctx.beginPath();
             this.ctx.moveTo(rx, ry);
             this.ctx.lineTo(rx + Math.cos(angle) * length, ry + Math.sin(angle) * length);

@@ -2,11 +2,11 @@
 <html lang="cs">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
     <meta name="theme-color" content="#111827">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="description" content="Srandovní soukromá AR appka pro porovnání šablon, vibe score a lehce drzé verdikty. Kamera běží pouze lokálně v zařízení.">
+    <meta name="description" content="Srandovní soukromá mobilní PWA AR appka pro porovnání šablon, vibe score a lehce drzé verdikty. Kamera běží pouze lokálně v zařízení.">
     <title>Ohol Buchtu Studio</title>
 
     <link rel="manifest" href="%BASE_URL%manifest.json">
@@ -16,64 +16,21 @@
 </head>
 <body>
     <main class="app-shell" aria-labelledby="app-title">
-        <section class="hero-card">
-            <div class="hero-copy">
-                <p class="eyebrow">Totálně seriózní ne-seriózní AR appka</p>
-                <h1 id="app-title">Ohol Buchtu Studio</h1>
-                <p class="lead">
-                    Vyber šablonu, pusť kameru a zjisti, jestli je to classy, cursed, nebo rovnou hlavní postava večera.
-                    Nic se neukládá, nic se neposílá ven. Jen lokální sranda.
-                </p>
-
-                <div class="mini-badges" aria-label="Výhody aplikace">
-                    <span>🔒 private</span>
-                    <span>🎲 randomizer</span>
-                    <span>✨ vibe score</span>
-                </div>
+        <section class="top-panel">
+            <div class="brand-block">
+                <p class="eyebrow">srandovní AR PWA</p>
+                <h1 id="app-title">Ohol Buchtu</h1>
             </div>
 
-            <div class="controls" aria-label="Ovládání aplikace">
-                <label class="field" for="template-select">
-                    <span>Šablona</span>
-                    <select id="template-select">
-                        <option value="none">Žádná šablona</option>
-                        <option value="full">Full / lesní království</option>
-                        <option value="brazilian">Brazilian / aero mód</option>
-                        <option value="landing-strip">Landing Strip / runway ready</option>
-                        <option value="triangle">Triangle / geometrická odvaha</option>
-                        <option value="heart">Heart / romantický chaos</option>
-                        <option value="lightning">Lightning / pojistky ven</option>
-                        <option value="star">Star / main character</option>
-                    </select>
-                </label>
-
-                <div class="button-row camera-row">
-                    <button id="start-camera" class="button primary" type="button">Spustit kameru</button>
-                    <button id="stop-camera" class="button" type="button" disabled>Zastavit</button>
-                    <button id="switch-camera" class="button ghost" type="button" disabled>Přepnout</button>
+            <div class="fun-panel compact" aria-live="polite">
+                <div class="fun-panel-header">
+                    <span id="template-label" class="template-pill">Decent mód</span>
+                    <strong id="template-vibe" class="fun-score">Vibe 0/10</strong>
                 </div>
-
-                <div class="button-row fun-row">
-                    <button id="random-template" class="button fun" type="button">🎲 Náhodná buchta</button>
-                    <button id="boost-vibe" class="button fun ghost" type="button">⚡ Boost vibe</button>
-                    <button id="chaos-mode" class="button fun ghost" type="button">🪩 Chaos</button>
+                <div class="vibe-meter" aria-hidden="true">
+                    <span id="vibe-fill"></span>
                 </div>
-
-                <label class="toggle">
-                    <input id="mirror-toggle" type="checkbox" checked>
-                    <span>Zrcadlit náhled jako selfie</span>
-                </label>
-
-                <div class="fun-panel" aria-live="polite">
-                    <div class="fun-panel-header">
-                        <span id="template-label" class="template-pill">Decent mód</span>
-                        <strong id="template-vibe" class="fun-score">Vibe 0/10</strong>
-                    </div>
-                    <div class="vibe-meter" aria-hidden="true">
-                        <span id="vibe-fill"></span>
-                    </div>
-                    <p id="template-joke" class="fun-joke">Vyber šablonu a appka tě bez milosti, ale s láskou, zhodnotí.</p>
-                </div>
+                <p id="template-joke" class="fun-joke">Vyber šablonu a appka tě s láskou zhodnotí.</p>
             </div>
         </section>
 
@@ -83,13 +40,44 @@
                 <canvas id="canvas" class="overlay" aria-hidden="true"></canvas>
                 <div id="empty-state" class="empty-state">
                     <strong>Kamera je vypnutá</strong>
-                    <span>Spusť ji nahoře. iPhone má rád, když se ho člověk hezky zeptá, ne když mu tam kamera vletí jak exekutor.</span>
+                    <span>Klepni na Start. iPhone má rád slušné vychování.</span>
                 </div>
             </div>
+        </section>
 
-            <div class="status-grid">
-                <p id="status" class="status" role="status" aria-live="polite">Připraveno. Vyber šablonu, hoď random nebo rovnou zapni kameru.</p>
-                <p class="privacy-note">🔒 Lokální zpracování • bez uploadu • bez ukládání fotek nebo videa</p>
+        <section class="bottom-panel" aria-label="Ovládání aplikace">
+            <label class="field compact-field" for="template-select">
+                <span>Šablona</span>
+                <select id="template-select">
+                    <option value="none">Žádná šablona</option>
+                    <option value="full">Full / lesní království</option>
+                    <option value="brazilian">Brazilian / aero mód</option>
+                    <option value="landing-strip">Landing Strip / runway ready</option>
+                    <option value="triangle">Triangle / geometrická odvaha</option>
+                    <option value="heart">Heart / romantický chaos</option>
+                    <option value="lightning">Lightning / pojistky ven</option>
+                    <option value="star">Star / main character</option>
+                </select>
+            </label>
+
+            <div class="button-row camera-row">
+                <button id="start-camera" class="button primary" type="button">Start</button>
+                <button id="stop-camera" class="button" type="button" disabled>Stop</button>
+                <button id="switch-camera" class="button ghost" type="button" disabled>Zadní kamera</button>
+            </div>
+
+            <div class="button-row fun-row">
+                <button id="random-template" class="button fun" type="button">🎲 Random</button>
+                <button id="boost-vibe" class="button fun ghost" type="button">⚡ Boost</button>
+                <button id="chaos-mode" class="button fun ghost" type="button">🪩 Chaos</button>
+            </div>
+
+            <div class="footer-controls">
+                <label class="toggle">
+                    <input id="mirror-toggle" type="checkbox" checked>
+                    <span>Zrcadlit selfie</span>
+                </label>
+                <p id="status" class="status" role="status" aria-live="polite">Připraveno. Vyber šablonu nebo zapni kameru.</p>
             </div>
         </section>
     </main>
